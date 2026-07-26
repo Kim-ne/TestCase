@@ -1,0 +1,92 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: autogen-app:latest
+    container_name: autogen-app
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 9000, $$errno, $$errstr, 1) ? 0 : 1);'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - autogen-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: autogen-nginx
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - autogen-network
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    container_name: autogen-db
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$(cat /run/secrets/db_root_password)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: autogen
+      MYSQL_USER: laravel
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_PASSWORD_FILE: /run/secrets/db_user_password
+    secrets:
+      - db_root_password
+      - db_user_password
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - autogen-network
+    restart: unless-stopped
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: autogen-phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: laravel
+      PMA_PASSWORD: secret
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - autogen-network
+    restart: unless-stopped
+
+secrets:
+    db_root_password:
+        file: ./secrets/db_root_password
+    db_user_password:
+        file: ./secrets/db_user_password
+
+volumes:
+  db-data:
+
+networks:
+  autogen-network:
+    driver: bridge

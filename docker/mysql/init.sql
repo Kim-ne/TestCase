@@ -1,0 +1,2 @@
+GRANT ALL PRIVILEGES ON autogen.* TO 'laravel'@'%';
+FLUSH PRIVILEGES;
