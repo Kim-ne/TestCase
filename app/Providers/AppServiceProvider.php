@@ -2,7 +2,8 @@
 
 namespace App\Providers;
 
-use App\Services\Contracts\FileTextExtractorInterface;
+use App\Services\Contracts\TestCaseGeneratorServiceInterface;
+use App\Services\TestCaseGeneratorService;
 use App\Services\FileExtraction\PdfTextExtractor;
 use App\Services\FileExtraction\TextNormalizerService;
 use App\Services\FileExtraction\WordTextExtractor;
@@ -22,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
                 $app->make(WordTextExtractor::class),
             ]);
         });
+
+        $this->app->bind(TestCaseGeneratorServiceInterface::class, TestCaseGeneratorService::class);
 
     }
 

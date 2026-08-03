@@ -26,8 +26,18 @@ class TextNormalizerService
         $extension = strtolower($extension);
 
         foreach ($this->extractors as $extractor) {
-            if ($extractor->supports($extension)) {
-                return trim($extractor->extract($filePath));
+            if (! $extractor->supports($extension)) {
+                continue;
+            }
+
+            try {
+                $extractedText = trim($extractor->extract($filePath));
+
+                if ($extractedText !== '') {
+                    return $extractedText;
+                }
+            } catch (\Throwable) {
+                continue;
             }
         }
 

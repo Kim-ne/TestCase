@@ -31,10 +31,14 @@ RUN apk add --no-cache \
     icu-dev \
     zip \
     libzip-dev \
+    ca-certificates \
+    && update-ca-certificates \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd intl zip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && apk del --no-cache git
+    && apk del --no-cache git \
+    && echo "curl.cainfo = /etc/ssl/certs/ca-certificates.crt" > /usr/local/etc/php/conf.d/docker-php-curl-ca.ini \
+    && echo "openssl.cafile = /etc/ssl/certs/ca-certificates.crt" >> /usr/local/etc/php/conf.d/docker-php-curl-ca.ini
 
 COPY --from=composer-deps /usr/bin/composer /usr/bin/composer
 COPY --from=composer-deps /var/www/html/vendor /var/www/html/vendor

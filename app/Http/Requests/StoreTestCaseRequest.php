@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTestCaseRequest extends FormRequest
 {
@@ -25,6 +26,7 @@ class StoreTestCaseRequest extends FormRequest
         return [
             'text' => ['nullable', 'string', 'required_without:file' ],
             'file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120', 'required_without:text'],
+            'output_language' => [Rule::in(['en','vi'])],
         ];
     }
 

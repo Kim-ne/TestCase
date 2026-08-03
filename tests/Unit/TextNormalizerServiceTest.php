@@ -4,7 +4,9 @@ namespace Tests\Unit;
 
 use App\Services\Contracts\FileTextExtractorInterface;
 use App\Services\FileExtraction\TextNormalizerService;
-use PHPUnit\Framework\TestCase;
+use App\Ai\Agents\TestCaseGeneratorAgent;
+use Illuminate\Http\UploadedFile;
+use Tests\TestCase;
 
 class TextNormalizerServiceTest extends TestCase
 {
@@ -99,7 +101,7 @@ class TextNormalizerServiceTest extends TestCase
         $this->assertSame('hello', $service->normalize('  hello  ', null, null));
     }
 
-    public function test_it_test_it_prioritizes_text_over_file_when_both_are_present(): void
+    public function test_it_prioritizes_text_over_file_when_both_are_present(): void
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'docx');
         file_put_contents($tempFile, 'docx content');
@@ -123,5 +125,4 @@ class TextNormalizerServiceTest extends TestCase
 
         unlink($tempFile);
     }
-
 }

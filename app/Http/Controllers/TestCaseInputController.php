@@ -3,23 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTestCaseRequest;
-use App\Services\FileExtraction\TextNormalizerService;
+use App\Services\Contracts\TestCaseGeneratorServiceInterface;
+use App\Exceptions\TestCaseGenerationFailedException;
 use Illuminate\Http\RedirectResponse;
 
 class TestCaseInputController extends Controller
 {
-    public function store(StoreTestCaseRequest $request, TextNormalizerService $normalizer): RedirectResponse
+    public function __construct(
+        protected TestCaseGeneratorServiceInterface $generator
+    ){}
+
+    public function store(StoreTestCaseRequest $request): RedirectResponse
     {
         try
         {
-            $plainText = $normalizer->normalize(
-            $request->input('text'),
-            $request->file('file')?->getRealPath(),
-            $request->file('file')?->getClientOriginalExtension()
-            );
-            // Dùng $plainText để đưa vào prompt / model generation
-            return back()->with('plain_text', $plainText);
-        } catch (\Exception $e) {
+            $result = $this->generator->generate(
+                                $request->input('text'),
+                                $request->file('file')?->getRealPath(),
+                                $request->file('file')?->getClientOriginalExtension(),
+                                $request->input('output_language'),
+                            );
+
+            return back()->with('test_cases', $result);
+        } catch (TestCaseGenerationFailedException $e) {
             return back()->with('error', $e->getMessage());
         }
     }
