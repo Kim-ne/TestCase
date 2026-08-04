@@ -19,6 +19,26 @@ Luồng hiện tại:
 - Test dùng PHPUnit với `php artisan test`.
 - Dùng PSR-4: mã ứng dụng trong `app/`, test trong `tests/`.
 - Dùng dependency injection và interface cho các service có thể thay thế hoặc mock khi test.
+- Ưu tiên dùng package có sẵn của Laravel để khởi tạo feature.
+
+## Authentication & API
+
+- API authentication dùng Laravel Sanctum (token-based).
+- Các route API cần bảo vệ phải dùng middleware `auth:sanctum`.
+
+## Xử lý File
+
+- Validation file (mime type, kích thước) phải đặt trong Form Request.
+- Logic trích xuất nội dung từ PDF/Word đặt trong `app/Services/FileExtraction`.
+- Không lưu file tạm quá lâu; xử lý xong nên dọn dẹp nếu cần.
+
+## Bảo mật & Cấu hình nhạy cảm
+
+- Cấu hình dịch vụ AI đặt trong `config/ai.php`.
+- API key chỉ lấy từ biến môi trường (`.env`), ví dụ `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`…
+- Tuyệt đối không hard-code API key.
+- Không log token, response chứa, nội dung tài liệu hoặc dữ liệu nhạy cảm.
+- Xử lý lỗi an toàn; trả về message chung cho client, không lộ chi tiết nội bộ.
 
 ## Cách tổ chức mã nguồn
 
@@ -27,7 +47,6 @@ Luồng hiện tại:
 - Logic nghiệp vụ đặt trong `app/Services`; interface tương ứng đặt trong `app/Services/Contracts`.
 - Logic trích xuất tệp đặt trong `app/Services/FileExtraction`.
 - Đăng ký interface-to-implementation binding trong `app/Providers/AppServiceProvider.php` (hoặc provider chuyên biệt khi cần).
-- Cấu hình của dịch vụ AI đặt trong `config/ai.php`; khóa API chỉ lấy từ biến môi trường, tuyệt đối không hard-code.
 - Thay đổi schema phải đi kèm migration trong `database/migrations`; không sửa cấu trúc database thủ công.
 
 ## Khi thực hiện thay đổi
@@ -37,9 +56,12 @@ Luồng hiện tại:
 3. Khi thêm hành vi mới, bổ sung test phù hợp:
    - Unit test cho normalizer, extractor, service và các nhánh xử lý độc lập.
    - Feature test cho request validation, route, controller và luồng tích hợp.
-4. Dùng tên biến, phương thức và lớp rõ nghĩa; ưu tiên code dễ đọc cho người mới học Laravel.
-5. Xử lý lỗi tải/trích xuất tệp hoặc lỗi AI một cách an toàn; không để lộ secret, API key hay nội dung nhạy cảm trong response/log.
-6. Chỉ thay đổi dependency khi thực sự cần; cập nhật cả `composer.json` và `composer.lock`.
+4. Unit test **không được** ghi/sửa database thật. Phải dùng database test (cấu hình trong `phpunit.xml` / `.env.testing`) và trait như `RefreshDatabase` hoặc `DatabaseTransactions` khi cần tương tác DB. Ưu tiên mock dependency thay vì chạm DB nếu có thể.
+5. Khi sửa service có interface, phải cập nhật cả interface và binding trong ServiceProvider (nếu thay đổi chữ ký method).
+6. Dùng tên biến, phương thức và lớp rõ nghĩa; ưu tiên code dễ đọc cho người mới học Laravel.
+7. Xử lý lỗi tải/trích xuất tệp hoặc lỗi AI một cách an toàn; không để lộ secret, API key hay nội dung nhạy cảm trong response/log.
+8. Chỉ thay đổi dependency khi thực sự cần; cập nhật cả `composer.json` và `composer.lock`.
+9. Không commit file `.env` hoặc secret.
 
 ## Kiểm tra trước khi bàn giao
 
@@ -62,4 +84,5 @@ npm run build
 - Giải thích theo trình tự từng bước, phù hợp với lập trình viên fresher.
 - Khi đưa code, giải thích đoạn code làm gì và vì sao chọn cách đó.
 - Với thông tin chưa chắc chắn, nêu rõ giới hạn thay vì suy đoán.
+- Khi không chắc chắn về yêu cầu, hãy hỏi lại trước khi viết code lớn.
 - Khi báo cáo hoàn thành, tóm tắt file đã đổi, hành vi thay đổi và kết quả kiểm thử.

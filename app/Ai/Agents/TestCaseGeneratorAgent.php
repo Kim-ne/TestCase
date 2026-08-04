@@ -42,8 +42,8 @@ class TestCaseGeneratorAgent implements Agent, Conversational, HasStructuredOutp
 
         Output expectations:
         - Provide test case in a clear, structured format.
-        - Include: title, preconditions, steps, expected result, priority.
-        - Precondition: the state or condition that must be true before executing this test case (leave empty string if not applicable).
+        - Include: title, precondition, steps, expected result, priority.
+        - Preconditions: the state or condition that must be true before executing this test case (leave empty string if not applicable).
         - Do not invent requirements; only use the requirement provided in this prompt.
         Your objective is to help developers and QA engineers validate the feature thoroughly and improve software quality through comprehensive test coverage.
         EOT;
@@ -81,7 +81,7 @@ class TestCaseGeneratorAgent implements Agent, Conversational, HasStructuredOutp
                             'title' => $schema->string()
                                 ->description('The title of the test case.')
                                 ->required(),
-                            'precondition' => $schema->string()
+                            'preconditions' => $schema->string()
                                 ->description('The preconditions of the test case, if not applicable, leave empty.')
                                 ->nullable(),
                             'steps' => $schema->array()
