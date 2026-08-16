@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TestCase extends Model
 {
@@ -21,7 +22,7 @@ class TestCase extends Model
         'steps' => 'array',
     ];
 
-    public function testGenerationRequest(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function test_generation_request(): BelongsTo
     {
         return $this->belongsTo(TestGenerationRequest::class);
     }

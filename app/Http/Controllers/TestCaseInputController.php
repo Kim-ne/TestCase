@@ -7,6 +7,7 @@ use App\Exceptions\TestCaseGenerationFailedException;
 use App\Http\Requests\StoreTestCaseRequest;
 use App\Services\Contracts\TestCaseGeneratorServiceInterface;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 
 class TestCaseInputController extends Controller
 {
@@ -18,10 +19,13 @@ class TestCaseInputController extends Controller
     {
         try {
             $file = $request->file('file');
+            $storedPath = $file?->store('requirements', 'public');
+            $absolutePath = $storedPath ? Storage::disk('public')->path($storedPath)
+                                        : null;
 
             $result = $this->generator->generate(
                 $request->input('text'),
-                $file?->store('requirements', 'public'),
+                $absolutePath,
                 $file?->extension(),
                 $request->string('output_language')->toString(),
             );

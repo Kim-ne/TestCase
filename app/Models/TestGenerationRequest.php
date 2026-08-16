@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TestGenerationRequest extends Model
 {
@@ -18,7 +19,7 @@ class TestGenerationRequest extends Model
         'error_message',
     ];
 
-    public function testCases(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function testCases(): HasMany
     {
         return $this->hasMany(TestCase::class);
     }

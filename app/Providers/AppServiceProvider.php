@@ -2,13 +2,13 @@
 
 namespace App\Providers;
 
-use App\Services\Contracts\TestCaseGeneratorServiceInterface;
 use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
+use App\Repositories\TestGenerationRequestRepository;
+use App\Services\Contracts\TestCaseGeneratorServiceInterface;
 use App\Services\FileExtraction\PdfTextExtractor;
 use App\Services\FileExtraction\TextNormalizerService;
 use App\Services\FileExtraction\TxtExtractor;
 use App\Services\FileExtraction\WordTextExtractor;
-use App\Repositories\TestGenerationRequestRepository;
 use App\Services\TestCaseGeneratorService;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;

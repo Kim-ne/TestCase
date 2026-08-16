@@ -2,8 +2,8 @@
 
 namespace App\Repositories;
 
-use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
 use App\Models\TestGenerationRequest;
+use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class TestGenerationRequestRepository implements TestGenerationRequestRepositoryInterface

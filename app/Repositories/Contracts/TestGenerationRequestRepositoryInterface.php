@@ -14,7 +14,7 @@ interface TestGenerationRequestRepositoryInterface
     /**
      * Mark a test generation request as completed.
      *
-     * @param array<int, array{title: string, preconditions: string, steps: array<int, string>, expected_result: string}> $testCases
+     * @param  array<int, array{title: string, preconditions: string, steps: array<int, string>, expected_result: string}>  $testCases
      */
     public function markAsCompleted(TestGenerationRequest $request, array $testCases): TestGenerationRequest;
 

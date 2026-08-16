@@ -9,6 +9,7 @@ use App\Models\TestGenerationRequest;
 use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
 use App\Services\Contracts\TestCaseGeneratorServiceInterface;
 use App\Services\FileExtraction\TextNormalizerService;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
@@ -124,8 +125,13 @@ class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
                 $generationRequest,
                 'Test case generation failed.',
             );
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
             // Preserve the original error response if the status update cannot be saved.
+
+            Log::error('Test case generation request status update failed.', [
+                'generation_request_id' => $generationRequest->id,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 
