@@ -21,7 +21,7 @@ class TestCaseGeneratorAgent implements Agent, Conversational, HasStructuredOutp
      */
     public function instructions(): Stringable|string
     {
-        return <<<EOT
+        return <<<'EOT'
         You are a Senior QA Engineer responsible for generating complete and well-structured test cases based on the provided software requirement.
         Your role:
         - Carefully analyze the given requirement before generating test cases.
@@ -42,7 +42,7 @@ class TestCaseGeneratorAgent implements Agent, Conversational, HasStructuredOutp
 
         Output expectations:
         - Provide test case in a clear, structured format.
-        - Include: title, precondition, steps, expected result, priority.
+        - Include: title, preconditions, steps, expected result, priority.
         - Preconditions: the state or condition that must be true before executing this test case (leave empty string if not applicable).
         - Do not invent requirements; only use the requirement provided in this prompt.
         Your objective is to help developers and QA engineers validate the feature thoroughly and improve software quality through comprehensive test coverage.
@@ -77,25 +77,26 @@ class TestCaseGeneratorAgent implements Agent, Conversational, HasStructuredOutp
         return [
             'test_cases' => $schema->array()
                 ->items(
-                        $schema->object([
-                            'title' => $schema->string()
-                                ->description('The title of the test case.')
-                                ->required(),
-                            'preconditions' => $schema->string()
-                                ->description('The preconditions of the test case, if not applicable, leave empty.')
-                                ->nullable(),
-                            'steps' => $schema->array()
-                                ->items($schema->string())
-                                ->description('List of steps to perform in the test case.')
-                                ->required(),
-                            'expected_result' => $schema->string()
-                                ->required(),
-                            'priority' => $schema->string()
-                                ->enum(['High', 'Medium', 'Low'])
-                                ->required(),
-                        ])
-                    )
+                    $schema->object([
+                        'title' => $schema->string()
+                            ->description('The title of the test case.')
+                            ->required(),
+                        'preconditions' => $schema->string()
+                            ->description('The preconditions of the test case, if not applicable, leave empty.')
+                            ->nullable()
+                            ->required(),
+                        'steps' => $schema->array()
+                            ->items($schema->string())
+                            ->description('List of steps to perform in the test case.')
+                            ->required(),
+                        'expected_result' => $schema->string()
+                            ->required(),
+                        'priority' => $schema->string()
+                            ->enum(['High', 'Medium', 'Low'])
+                            ->required(),
+                    ])
+                )
                 ->required(),
-            ];
+        ];
     }
 }

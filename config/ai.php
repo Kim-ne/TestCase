@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => env('AI_DEFAULT_PROVIDER','gemini'),
+    'default' => env('AI_DEFAULT_PROVIDER', 'gemini'),
     'default_for_images' => 'gemini',
     'default_for_audio' => 'gemini',
     'default_for_transcription' => 'gemini',

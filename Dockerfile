@@ -49,11 +49,4 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 
 EXPOSE 9000
 
-# ENTRYPOINT ["sh", "-c", "php artisan key:generate --force >/dev/null 2>&1 || true;\
-#              php artisan config:cache --no-interaction;\
-#              php artisan route:cache --no-interaction;\
-#              php artisan view:cache --no-interaction;\
-#               php-fpm"]
-
-ENTRYPOINT ["sh", "-c", "php artisan key:generate --force >/dev/null 2>&1 || true;\
-              php-fpm"]
+CMD ["php-fpm"]

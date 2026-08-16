@@ -69,8 +69,6 @@ services:
       - "8080:80"
     environment:
       PMA_HOST: db
-      PMA_USER: laravel
-      PMA_PASSWORD: secret
     depends_on:
       db:
         condition: service_healthy

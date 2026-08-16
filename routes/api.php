@@ -13,4 +13,5 @@ Route::get('/ping', function () {
 });
 
 Route::post('/test-cases/generate', TestCaseGenerationController::class)
-    ->name('api.test-cases.generate');          //post      api/test-cases/generate
+    ->middleware(['auth:sanctum', 'throttle:10,1'])
+    ->name('api.test-cases.generate');                  // Post /api/test-cases/generate

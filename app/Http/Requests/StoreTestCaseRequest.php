@@ -24,17 +24,18 @@ class StoreTestCaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'text' => ['nullable', 'string', 'required_without:file' ],
-            'file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120', 'required_without:text'],
-            'output_language' => [Rule::in(['en','vi'])],
+            'text' => ['nullable', 'string', 'max:50000', 'required_without:file'],
+            'file' => ['nullable', 'file', 'mimes:pdf,doc,docx,txt', 'max:5120', 'required_without:text'],
+            'output_language' => ['required', Rule::in(['en', 'vi'])],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'file.mimes' => 'File phải có định dạng: pdf, doc hoặc docx.',
+            'file.mimes' => 'File phải có định dạng: pdf, doc, docx hoặc txt.',
             'file.max' => 'File không được vượt quá 5MB.',
+            'text.max' => 'Nội dung yêu cầu không được vượt quá 50.000 ký tự.',
         ];
     }
 }

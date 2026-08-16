@@ -18,6 +18,8 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/public/*storage*framework*views/
+/public/*storage*logs/
 /storage/*.key
 /storage/pail
 /secrets/
