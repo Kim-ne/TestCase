@@ -13,5 +13,8 @@ Route::get('/ping', function () {
 });
 
 Route::post('/test-cases/generate', TestCaseGenerationController::class)
-    ->middleware(['auth:sanctum', 'throttle:10,1'])
-    ->name('api.test-cases.generate');                  // Post /api/test-cases/generate
+    ->middleware(['throttle:10,1'])
+    ->name('api.test-cases.generate');
+Route::get('/test-cases/{generationRequest}', [TestCaseGenerationController::class, 'status'])
+    // ->middleware('auth:sanctum')
+    ->name('api.test-cases.status');

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Ai\Agents\TestCaseGeneratorAgent;
 use App\Exceptions\InvalidRequirementContentException;
 use App\Exceptions\TestCaseGenerationFailedException;
+use App\Jobs\GenerateTestCasesJob;
 use App\Models\TestGenerationRequest;
 use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
 use App\Services\Contracts\TestCaseGeneratorServiceInterface;
@@ -24,47 +25,42 @@ class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
 
     public function generate(?string $text, ?string $filePath, ?string $extension, string $language): array
     {
-        $plainText = $this->normalizer->normalize($text, $filePath, $extension);
-        if ($plainText === '') {
-            throw new InvalidRequirementContentException(
-                'The provided requirement does not contain readable text.',
-            );
-        }
+        $generationRequest = $this->createRequestFromInput($text, $filePath, $extension, $language);
 
-        if (mb_strlen($plainText) > self::MAX_REQUIREMENT_LENGTH) {
-            throw new InvalidRequirementContentException(
-                'The extracted requirement content is too long.',
-            );
-        }
+        return $this->generateForRequest($generationRequest);
+    }
 
-        [$outputLanguage, $languageName] = $this->resolveLanguage($language);
-        try {
-            $generationRequest = $this->createGenerationRequest(
-                $plainText,
-                $filePath,
-                $outputLanguage,
-            );
-        } catch (Throwable $exception) {
-            throw new TestCaseGenerationFailedException(
-                'The test case generation request could not be saved.',
-                previous: $exception,
-            );
-        }
-
-        $message = $this->buildMessage($plainText, $languageName);
+    public function queue(?string $text, ?string $filePath, ?string $extension, string $language): TestGenerationRequest
+    {
+        $generationRequest = $this->createRequestFromInput($text, $filePath, $extension, $language);
 
         try {
-            $response = $this->agent->prompt($message);
+            GenerateTestCasesJob::dispatch($generationRequest->id);
+
+            return $generationRequest;
         } catch (Throwable $exception) {
             $this->markGenerationRequestAsFailed($generationRequest);
 
             throw new TestCaseGenerationFailedException(
-                'The AI provider failed to generate test cases.',
+                'The test case generation request could not be queued.',
                 previous: $exception,
             );
         }
+    }
 
+    public function generateForRequest(TestGenerationRequest $generationRequest): array
+    {
         try {
+            $filePath = $generationRequest->input_type === 'file'
+                ? $generationRequest->input_file_path
+                : null;
+            $plainText = $this->requirementContent(
+                $generationRequest->input_type === 'text' ? $generationRequest->input_text : null,
+                $filePath,
+                $filePath ? pathinfo($filePath, PATHINFO_EXTENSION) : null,
+            );
+            [, $languageName] = $this->resolveLanguage($generationRequest->output_language);
+            $response = $this->agent->prompt($this->buildMessage($plainText, $languageName));
             $testCases = $this->extractTestCases($response->structured ?? []);
             $normalizedTestCases = $this->normalizeTestCases($testCases);
 
@@ -77,7 +73,7 @@ class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
             $this->generationRequests->markAsCompleted($generationRequest, $normalizedTestCases);
 
             return $normalizedTestCases;
-        } catch (TestCaseGenerationFailedException $exception) {
+        } catch (InvalidRequirementContentException|TestCaseGenerationFailedException $exception) {
             $this->markGenerationRequestAsFailed($generationRequest);
 
             throw $exception;
@@ -89,6 +85,44 @@ class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
                 previous: $exception,
             );
         }
+    }
+
+    protected function createRequestFromInput(
+        ?string $text,
+        ?string $filePath,
+        ?string $extension,
+        string $language,
+    ): TestGenerationRequest {
+        $plainText = $this->requirementContent($text, $filePath, $extension);
+        [$outputLanguage] = $this->resolveLanguage($language);
+
+        try {
+            return $this->createGenerationRequest($plainText, $filePath, $outputLanguage);
+        } catch (Throwable $exception) {
+            throw new TestCaseGenerationFailedException(
+                'The test case generation request could not be saved.',
+                previous: $exception,
+            );
+        }
+    }
+
+    protected function requirementContent(?string $text, ?string $filePath, ?string $extension): string
+    {
+        $plainText = $this->normalizer->normalize($text, $filePath, $extension);
+
+        if ($plainText === '') {
+            throw new InvalidRequirementContentException(
+                'The provided requirement does not contain readable text.',
+            );
+        }
+
+        if (mb_strlen($plainText) > self::MAX_REQUIREMENT_LENGTH) {
+            throw new InvalidRequirementContentException(
+                'The extracted requirement content is too long.',
+            );
+        }
+
+        return $plainText;
     }
 
     /**
@@ -127,10 +161,10 @@ class TestCaseGeneratorService implements TestCaseGeneratorServiceInterface
             );
         } catch (Throwable $exception) {
             // Preserve the original error response if the status update cannot be saved.
-
-            Log::error('Test case generation request status update failed.', [
-                'generation_request_id' => $generationRequest->id,
+            Log::error('The test case generation request could not be marked as failed.',[
+                'request_id' => $generationRequest->id,
                 'error' => $exception->getMessage(),
+                'exception' => $exception
             ]);
         }
     }

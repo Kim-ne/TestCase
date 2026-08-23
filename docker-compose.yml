@@ -93,6 +93,34 @@ services:
     restart: unless-stopped
     entrypoint: ["php", "artisan", "schedule:work"]
 
+  queue-worker:
+    image: autogen-app:latest
+    container_name: autogen-queue-worker
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    env_file:
+      - .env
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - autogen-network
+    restart: unless-stopped
+    entrypoint:
+      [
+        "php",
+        "artisan",
+        "queue:work",
+        "database",
+        "--tries=3",
+        "--timeout=120",
+        "--sleep=3",
+        "--max-time=60"
+    ]
+
 secrets:
     db_root_password:
         file: ./secrets/db_root_password

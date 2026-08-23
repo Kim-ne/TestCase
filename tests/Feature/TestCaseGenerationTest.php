@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Ai\Agents\TestCaseGeneratorAgent;
 use App\Exceptions\InvalidRequirementContentException;
 use App\Exceptions\TestCaseGenerationFailedException;
+use App\Models\TestGenerationRequest;
 use App\Models\User;
 use App\Services\Contracts\TestCaseGeneratorServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,9 +19,11 @@ class TestCaseGenerationTest extends TestCase
 
     public function test_it_generates_test_cases_from_text_input(): void
     {
-        TestCaseGeneratorAgent::fake([
-            $this->validAgentResponse('Login succeeds with correct information', 'high'),
-        ]);
+        $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queue')
+                ->once()
+                ->andReturn($this->pendingGenerationRequest(101));
+        });
 
         $response = $this->post(route('test-case-input'), [
             'text' => 'User login with email and password',
@@ -29,13 +31,7 @@ class TestCaseGenerationTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('test_cases');
-
-        $testCases = session('test_cases');
-
-        $this->assertCount(1, $testCases);
-        $this->assertSame('High', $testCases[0]['priority']);
-        $this->assertArrayHasKey('preconditions', $testCases[0]);
+        $response->assertSessionHas('test_generation_request_id', 101);
     }
 
     public function test_it_displays_generated_test_cases_on_the_input_page(): void
@@ -54,13 +50,13 @@ class TestCaseGenerationTest extends TestCase
     public function test_it_passes_an_uploaded_file_to_the_generator(): void
     {
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->withArgs(fn ($text, $path, $extension, $language): bool => $text === null
                     && is_string($path)
                     && is_string($extension)
                     && $language === 'en')
-                ->andReturn($this->validTestCases());
+                ->andReturn($this->pendingGenerationRequest(102));
         });
 
         $file = UploadedFile::fake()->create('requirements.pdf', 100, 'application/pdf');
@@ -71,19 +67,19 @@ class TestCaseGenerationTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('test_cases');
+        $response->assertSessionHas('test_generation_request_id', 102);
     }
 
     public function test_it_passes_a_txt_file_to_the_generator(): void
     {
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->withArgs(fn ($text, $path, $extension, $language): bool => $text === null
                     && is_string($path)
                     && $extension === 'txt'
                     && $language === 'en')
-                ->andReturn($this->validTestCases());
+                ->andReturn($this->pendingGenerationRequest(103));
         });
 
         $file = UploadedFile::fake()->createWithContent('requirements.txt', 'User can log in.');
@@ -94,7 +90,7 @@ class TestCaseGenerationTest extends TestCase
         ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('test_cases');
+            ->assertSessionHas('test_generation_request_id', 103);
     }
 
     public function test_it_fails_validation_when_neither_text_nor_file_is_provided(): void
@@ -138,7 +134,7 @@ class TestCaseGenerationTest extends TestCase
     public function test_web_returns_a_safe_error_when_ai_generation_fails(): void
     {
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->andThrow(new TestCaseGenerationFailedException('Provider secret detail'));
         });
@@ -155,16 +151,11 @@ class TestCaseGenerationTest extends TestCase
 
     public function test_it_rejects_an_incomplete_ai_response(): void
     {
-        TestCaseGeneratorAgent::fake([
-            [
-                'test_cases' => [
-                    [
-                        'title' => 'Incomplete test case',
-                        'steps' => ['Perform an action'],
-                    ],
-                ],
-            ],
-        ]);
+        $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queue')
+                ->once()
+                ->andReturn($this->pendingGenerationRequest(104));
+        });
 
         $response = $this->post(route('test-case-input'), [
             'text' => 'Some requirement',
@@ -172,7 +163,7 @@ class TestCaseGenerationTest extends TestCase
         ]);
 
         $response->assertRedirect()
-            ->assertSessionHas('error', 'Unable to generate test cases at this time.');
+            ->assertSessionHas('test_generation_request_id', 104);
     }
 
     public function test_api_requires_authentication(): void
@@ -189,18 +180,20 @@ class TestCaseGenerationTest extends TestCase
     {
         $this->authenticateApiUser();
 
-        TestCaseGeneratorAgent::fake([
-            $this->validAgentResponse('User can log in', 'medium'),
-        ]);
+        $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('queue')
+                ->once()
+                ->andReturn($this->pendingGenerationRequest(105));
+        });
 
         $response = $this->postJson(route('api.test-cases.generate'), [
             'text' => 'Users can log in with valid credentials.',
             'output_language' => 'en',
         ]);
 
-        $response->assertOk()
-            ->assertJsonPath('data.test_cases.0.title', 'User can log in')
-            ->assertJsonPath('data.test_cases.0.priority', 'Medium');
+        $response->assertAccepted()
+            ->assertJsonPath('data.request_id', 105)
+            ->assertJsonPath('data.status', 'pending');
     }
 
     public function test_api_accepts_a_txt_file_for_an_authenticated_user(): void
@@ -208,13 +201,13 @@ class TestCaseGenerationTest extends TestCase
         $this->authenticateApiUser();
 
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->withArgs(fn ($text, $path, $extension, $language): bool => $text === null
                     && is_string($path)
                     && $extension === 'txt'
                     && $language === 'en')
-                ->andReturn($this->validTestCases());
+                ->andReturn($this->pendingGenerationRequest(106));
         });
 
         $file = UploadedFile::fake()->createWithContent('requirements.txt', 'User can log in.');
@@ -224,7 +217,33 @@ class TestCaseGenerationTest extends TestCase
             'output_language' => 'en',
         ]);
 
+        $response->assertAccepted()
+            ->assertJsonPath('data.request_id', 106);
+    }
+
+    public function test_api_returns_completed_test_cases_for_an_authenticated_user(): void
+    {
+        $this->authenticateApiUser();
+        $generationRequest = TestGenerationRequest::create([
+            'input_type' => 'text',
+            'input_text' => 'User login requirement',
+            'output_language' => 'en',
+            'provider' => 'gemini',
+            'status' => 'completed',
+        ]);
+        $generationRequest->testCases()->create([
+            'title' => 'User can log in',
+            'preconditions' => 'The user has an account',
+            'steps' => ['Enter email and password'],
+            'expected_result' => 'The dashboard is displayed',
+            'priority' => 'High',
+        ]);
+
+        $response = $this->getJson(route('api.test-cases.status', $generationRequest));
+
         $response->assertOk()
+            ->assertJsonPath('data.request_id', $generationRequest->id)
+            ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.test_cases.0.title', 'User can log in');
     }
 
@@ -245,7 +264,7 @@ class TestCaseGenerationTest extends TestCase
         $this->authenticateApiUser();
 
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->andThrow(new InvalidRequirementContentException('Parser detail'));
         });
@@ -266,7 +285,7 @@ class TestCaseGenerationTest extends TestCase
         $this->authenticateApiUser();
 
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->once()
                 ->andThrow(new TestCaseGenerationFailedException('Provider secret detail'));
         });
@@ -288,16 +307,16 @@ class TestCaseGenerationTest extends TestCase
         $this->authenticateApiUser();
 
         $this->mock(TestCaseGeneratorServiceInterface::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('generate')
+            $mock->shouldReceive('queue')
                 ->times(10)
-                ->andReturn($this->validTestCases());
+                ->andReturn($this->pendingGenerationRequest(107));
         });
 
         for ($requestNumber = 1; $requestNumber <= 10; $requestNumber++) {
             $this->postJson(route('api.test-cases.generate'), [
                 'text' => 'Some requirement',
                 'output_language' => 'en',
-            ])->assertOk();
+            ])->assertAccepted();
         }
 
         $this->postJson(route('api.test-cases.generate'), [
@@ -329,5 +348,18 @@ class TestCaseGenerationTest extends TestCase
     private function validTestCases(): array
     {
         return $this->validAgentResponse('User can log in', 'High')['test_cases'];
+    }
+
+    private function pendingGenerationRequest(int $id): TestGenerationRequest
+    {
+        $generationRequest = new TestGenerationRequest([
+            'input_type' => 'text',
+            'input_text' => 'User login requirement',
+            'output_language' => 'en',
+            'status' => 'pending',
+        ]);
+        $generationRequest->forceFill(['id' => $id]);
+
+        return $generationRequest;
     }
 }

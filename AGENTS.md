@@ -106,3 +106,13 @@ docker compose exec app npm run build
 - Với thông tin chưa chắc chắn, nêu rõ giới hạn thay vì suy đoán.
 - Khi không chắc chắn về yêu cầu, hãy hỏi lại trước khi viết code lớn.
 - Khi báo cáo hoàn thành, tóm tắt file đã đổi, hành vi thay đổi và kết quả kiểm thử.
+
+## Agent skills
+
+### Issue tracker
+
+Các issue được theo dõi trên GitHub Issues của repository này. Xem `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Đây là repository một ngữ cảnh (single-context). Xem `docs/agents/domain.md`.

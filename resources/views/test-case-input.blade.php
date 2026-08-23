@@ -29,6 +29,16 @@
                         </div>
                     @endif
 
+                    @if ($generationRequest?->status === 'pending')
+                        <div class="alert alert-info" role="status">
+                            Yêu cầu đang được xử lý. Kết quả sẽ tự hiển thị khi hoàn tất.
+                        </div>
+                    @elseif ($generationRequest?->status === 'failed')
+                        <div class="alert alert-danger" role="alert">
+                            Không thể tạo test case cho yêu cầu này. Vui lòng thử lại.
+                        </div>
+                    @endif
+
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-body p-4">
                             <form action="{{ route('test-case-input') }}" method="POST" enctype="multipart/form-data">
@@ -87,14 +97,14 @@
                         </div>
                     </div>
 
-                    @if (session()->has('test_cases'))
+                    @if (! empty($testCases))
                         <section aria-labelledby="generated-test-cases-title">
                             <div class="d-flex align-items-center justify-content-between mb-3">
                                 <h2 class="h4 mb-0" id="generated-test-cases-title">Test case đã tạo</h2>
-                                <span class="badge text-bg-secondary">{{ count(session('test_cases')) }} kết quả</span>
+                                <span class="badge text-bg-secondary">{{ count($testCases) }} kết quả</span>
                             </div>
 
-                            @forelse (session('test_cases') as $index => $testCase)
+                            @forelse ($testCases as $index => $testCase)
                                 @php
                                     $priorityClass = match ($testCase['priority'] ?? '') {
                                         'High' => 'text-bg-danger',
@@ -155,5 +165,27 @@
             integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
             crossorigin="anonymous"
         ></script>
+
+        @if ($generationRequest?->status === 'pending')
+            <script>
+                const testGenerationStatusUrl = @json(route('test-case-input.status', $generationRequest));
+
+                window.setInterval(async () => {
+                    const response = await fetch(testGenerationStatusUrl, {
+                        headers: { Accept: 'application/json' },
+                    });
+
+                    if (! response.ok) {
+                        return;
+                    }
+
+                    const { data } = await response.json();
+
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        window.location.reload();
+                    }
+                }, 3000);
+            </script>
+        @endif
     </body>
 </html>

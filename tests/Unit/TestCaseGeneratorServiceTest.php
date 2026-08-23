@@ -5,11 +5,13 @@ namespace Tests\Unit;
 use App\Ai\Agents\TestCaseGeneratorAgent;
 use App\Exceptions\InvalidRequirementContentException;
 use App\Exceptions\TestCaseGenerationFailedException;
+use App\Jobs\GenerateTestCasesJob;
 use App\Models\TestGenerationRequest;
 use App\Repositories\Contracts\TestGenerationRequestRepositoryInterface;
 use App\Services\Contracts\FileTextExtractorInterface;
 use App\Services\FileExtraction\TextNormalizerService;
 use App\Services\TestCaseGeneratorService;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Mockery\MockInterface;
 use Tests\TestCase;
@@ -71,7 +73,7 @@ class TestCaseGeneratorServiceTest extends TestCase
             ],
         ]);
 
-        $generationRequest = new TestGenerationRequest;
+        $generationRequest = $this->pendingTextRequest();
         $repository = Mockery::mock(TestGenerationRequestRepositoryInterface::class);
         $repository->shouldReceive('create')
             ->once()
@@ -93,7 +95,7 @@ class TestCaseGeneratorServiceTest extends TestCase
 
     public function test_it_marks_the_request_as_failed_when_the_ai_provider_throws(): void
     {
-        $generationRequest = new TestGenerationRequest;
+        $generationRequest = $this->pendingTextRequest();
         $repository = Mockery::mock(TestGenerationRequestRepositoryInterface::class);
         $repository->shouldReceive('create')
             ->once()
@@ -152,7 +154,7 @@ class TestCaseGeneratorServiceTest extends TestCase
             ],
         ]);
 
-        $generationRequest = new TestGenerationRequest;
+        $generationRequest = $this->pendingTextRequest();
         $repository = Mockery::mock(TestGenerationRequestRepositoryInterface::class);
         $repository->shouldReceive('create')
             ->once()
@@ -189,11 +191,52 @@ class TestCaseGeneratorServiceTest extends TestCase
         ], $testCases);
     }
 
+    public function test_it_dispatches_a_job_for_a_pending_generation_request(): void
+    {
+        Queue::fake();
+
+        $generationRequest = $this->pendingTextRequest(['id' => 123]);
+        $repository = Mockery::mock(TestGenerationRequestRepositoryInterface::class);
+        $repository->shouldReceive('create')
+            ->once()
+            ->andReturn($generationRequest);
+
+        $service = new TestCaseGeneratorService(
+            new TextNormalizerService,
+            new TestCaseGeneratorAgent,
+            $repository,
+        );
+
+        $queuedRequest = $service->queue('User login requirement', null, null, 'en');
+
+        $this->assertSame($generationRequest, $queuedRequest);
+        Queue::assertPushed(
+            GenerateTestCasesJob::class,
+            fn (GenerateTestCasesJob $job): bool => $job->generationRequestId === 123,
+        );
+    }
+
     private function repositoryThatDoesNotCreateRequests(): MockInterface
     {
         $repository = Mockery::mock(TestGenerationRequestRepositoryInterface::class);
         $repository->shouldNotReceive('create');
 
         return $repository;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function pendingTextRequest(array $attributes = []): TestGenerationRequest
+    {
+        $generationRequest = new TestGenerationRequest([
+            'input_type' => 'text',
+            'input_text' => 'User login requirement',
+            'output_language' => 'en',
+            'status' => 'pending',
+        ]);
+        $generationRequest->forceFill($attributes);
+
+        return $generationRequest;
     }
 }
